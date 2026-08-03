@@ -1,6 +1,6 @@
 # MERN Chat App — DevOps Project
 
-A real-time MERN stack chat application (Socket.io + MongoDB) wrapped in a full CI/CD and cloud-native deployment pipeline. The app itself is a full-stack chat platform; the focus of this repo is the DevOps layer built around it — containerization, automated pipelines, security scanning, and GitOps-based Kubernetes deployment on AWS.
+A real-time MERN stack chat application (Socket.io + MongoDB) with a GitHub Actions CI pipeline built around it — dependency install, build, static analysis, dependency/filesystem vulnerability scanning, and a Docker image published to Docker Hub on every push to `main`. Kubernetes, ArgoCD, and Ansible assets are included in the repo for cluster deployment.
 
 ## Application
 
@@ -10,42 +10,40 @@ A real-time MERN stack chat application (Socket.io + MongoDB) wrapped in a full 
 - **Real-time:** Socket.io
 - Features: authentication, one-to-one and group chats, typing indicators, notifications, user search, group admin controls
 
-## DevOps Pipeline
+## CI Pipeline (GitHub Actions — `ci-cd.yml`)
 
-| Stage | Tool |
-|---|---|
-| Source control | Git / GitHub |
-| CI/CD orchestration | GitHub Actions (`.github/workflows/ci-cd.yml`) |
-| Containerization | Docker, Docker Compose |
-| Code quality | SonarQube |
-| Dependency / vulnerability scanning | OWASP Dependency-Check |
-| Configuration management | Ansible |
-| Container orchestration | Kubernetes (AWS EKS) |
-| GitOps continuous deployment | ArgoCD |
-| Database | MongoDB Atlas |
+Triggered on every push to `main`. Job: **build-and-scan**
 
-### Pipeline flow
+1. **Checkout** source (`actions/checkout@v4`)
+2. **Setup Node.js 18** (`actions/setup-node@v4`)
+3. **Install backend dependencies** — `npm install --legacy-peer-deps`
+4. **Install frontend dependencies** — `cd frontend && npm install --legacy-peer-deps`
+5. **Build React app** — `npm run build`
+6. **SonarQube scan** (`SonarSource/sonarqube-scan-action@v5`) — static code analysis, authenticated via `SONAR_TOKEN` / `SONAR_HOST_URL` secrets
+7. **OWASP Dependency-Check** (`dependency-check/Dependency-Check_Action@main`) — scans project dependencies for known CVEs, outputs an HTML report, Yarn audit disabled (`--disableYarnAudit`)
+8. **Trivy filesystem scan** (`aquasecurity/trivy-action@master`) — scans the repo filesystem (`scan-type: fs`) for vulnerabilities
+9. **Docker Hub login** (`docker/login-action@v3`)
+10. **Build Docker image** — `docker build -t hitheshgowda10docker/chat-app:latest .`
+11. **Push Docker image** to Docker Hub
 
-1. Push to `main` triggers the **MERN Chat App CI/CD** GitHub Actions workflow.
-2. Dependencies are installed and the app is built.
-3. **SonarQube** runs static code analysis for code quality/maintainability gates.
-4. **OWASP Dependency-Check** scans dependencies for known vulnerabilities.
-5. Docker images are built for the app (see `Dockerfile`, `docker-compose.yml`).
-6. **Ansible** playbooks handle configuration/provisioning steps.
-7. Manifests in `k8s/` are deployed to an **AWS EKS** cluster.
-8. **ArgoCD** (`argocd/`) syncs the cluster state with the Git repo for GitOps-based continuous delivery.
-9. The app connects to **MongoDB Atlas** in production instead of a local Mongo container.
+## Deployment Assets
+
+These are present in the repo for deploying the built image to a Kubernetes cluster, but are **not** invoked by the CI workflow above — they're run/applied separately:
+
+- `k8s/` — Kubernetes manifests (Deployments, Services, etc.), intended for an AWS EKS cluster
+- `argocd/` — ArgoCD application definitions for GitOps-style syncing of the cluster to this repo
+- `ansible/` — playbooks for configuration/provisioning tasks
 
 ## Repository Structure
 
 ```
 .
-├── .github/workflows/   # GitHub Actions CI/CD pipeline
+├── .github/workflows/   # ci-cd.yml — GitHub Actions CI pipeline
 ├── ansible/             # Configuration management playbooks
-├── argocd/              # ArgoCD application manifests for GitOps deployment
+├── argocd/              # ArgoCD application manifests
 ├── backend/             # Express + Node.js API server
 ├── frontend/            # React client
-├── k8s/                 # Kubernetes manifests (Deployments, Services, etc.)
+├── k8s/                 # Kubernetes manifests
 ├── screenshots/         # App UI screenshots
 ├── Dockerfile
 ├── docker-compose.yml
@@ -69,34 +67,28 @@ This spins up:
 
 ```bash
 # Backend
-cd backend
-npm install
+npm install --legacy-peer-deps
 npm run start
 
 # Frontend
 cd frontend
-npm install
+npm install --legacy-peer-deps
 npm start
 ```
 
-## Kubernetes / EKS Deployment
+## Pulling the Published Image
 
-Manifests live in `k8s/`. Apply directly:
+```bash
+docker pull hitheshgowda10docker/chat-app:latest
+```
+
+## Kubernetes / EKS Deployment
 
 ```bash
 kubectl apply -f k8s/
 ```
 
-Or let **ArgoCD** manage it via GitOps using the application definitions in `argocd/` — ArgoCD watches this repo and syncs the cluster automatically on changes to `main`.
-
-## CI/CD
-
-The pipeline is defined in `.github/workflows/ci-cd.yml` and runs on every push to `main`:
-- Build & test
-- SonarQube static analysis
-- OWASP dependency vulnerability scan
-- Docker image build
-- Deployment to EKS via Ansible/Kubernetes manifests, synced through ArgoCD
+Or via ArgoCD using the application definitions in `argocd/`.
 
 ## Screenshots
 
@@ -104,4 +96,4 @@ See the `screenshots/` directory for UI walkthroughs (auth, real-time chat, grou
 
 ## Notes
 
-This project was built to demonstrate an end-to-end DevOps workflow — from code commit to a running, monitored deployment on Kubernetes — layered on top of an existing MERN chat application, rather than to showcase the chat app's features themselves.
+This project demonstrates a DevOps-hardened build pipeline — static analysis (SonarQube), dependency vulnerability scanning (OWASP Dependency-Check), and filesystem vulnerability scanning (Trivy) — gating a Docker image before it's published, layered on top of an existing MERN chat application. Kubernetes/ArgoCD/Ansible assets are included for cluster deployment as a separate step from CI.
