@@ -1,0 +1,22 @@
+
+services:
+  mongodb:
+    image: mongo:7
+    container_name: mongodb
+    restart: always
+    ports:
+      - "27017:27017"
+
+  chat-app:
+    build: .
+    container_name: chat-app
+    depends_on:
+      - mongodb
+    ports:
+      - "5000:5000"
+    environment:
+      - NODE_ENV=production
+      - PORT=5000
+      - JWT_SECRET=chatappsecret
+      - MONGO_URI=mongodb://mongodb:27017/chat-app
+
