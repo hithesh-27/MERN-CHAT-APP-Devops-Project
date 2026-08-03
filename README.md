@@ -1,77 +1,107 @@
+# MERN Chat App — DevOps Project
 
-# Talk-A-Tive
+A real-time MERN stack chat application (Socket.io + MongoDB) wrapped in a full CI/CD and cloud-native deployment pipeline. The app itself is a full-stack chat platform; the focus of this repo is the DevOps layer built around it — containerization, automated pipelines, security scanning, and GitOps-based Kubernetes deployment on AWS.
 
-Talk-a-tive is a Full Stack Chatting App.
-Uses Socket.io for real time communication and stores user details in encrypted format in Mongo DB Database.
-## Tech Stack
+## Application
 
-**Client:** React JS
+- **Client:** React JS
+- **Server:** Node.js, Express.js
+- **Database:** MongoDB (MongoDB Atlas in production)
+- **Real-time:** Socket.io
+- Features: authentication, one-to-one and group chats, typing indicators, notifications, user search, group admin controls
 
-**Server:** Node JS, Express JS
+## DevOps Pipeline
 
-**Database:** Mongo DB
-  
-## Demo
+| Stage | Tool |
+|---|---|
+| Source control | Git / GitHub |
+| CI/CD orchestration | GitHub Actions (`.github/workflows/ci-cd.yml`) |
+| Containerization | Docker, Docker Compose |
+| Code quality | SonarQube |
+| Dependency / vulnerability scanning | OWASP Dependency-Check |
+| Configuration management | Ansible |
+| Container orchestration | Kubernetes (AWS EKS) |
+| GitOps continuous deployment | ArgoCD |
+| Database | MongoDB Atlas |
 
-[https://talk-a-tive.herokuapp.com/](https://talk-a-tive-7fgq.onrender.com)
+### Pipeline flow
 
-![](https://github.com/piyush-eon/mern-chat-app/blob/master/screenshots/group%20%2B%20notif.PNG)
-## Run Locally
+1. Push to `main` triggers the **MERN Chat App CI/CD** GitHub Actions workflow.
+2. Dependencies are installed and the app is built.
+3. **SonarQube** runs static code analysis for code quality/maintainability gates.
+4. **OWASP Dependency-Check** scans dependencies for known vulnerabilities.
+5. Docker images are built for the app (see `Dockerfile`, `docker-compose.yml`).
+6. **Ansible** playbooks handle configuration/provisioning steps.
+7. Manifests in `k8s/` are deployed to an **AWS EKS** cluster.
+8. **ArgoCD** (`argocd/`) syncs the cluster state with the Git repo for GitOps-based continuous delivery.
+9. The app connects to **MongoDB Atlas** in production instead of a local Mongo container.
 
-Clone the project
+## Repository Structure
 
-```bash
-  git clone https://github.com/piyush-eon/mern-chat-app
+```
+.
+├── .github/workflows/   # GitHub Actions CI/CD pipeline
+├── ansible/             # Configuration management playbooks
+├── argocd/              # ArgoCD application manifests for GitOps deployment
+├── backend/             # Express + Node.js API server
+├── frontend/            # React client
+├── k8s/                 # Kubernetes manifests (Deployments, Services, etc.)
+├── screenshots/         # App UI screenshots
+├── Dockerfile
+├── docker-compose.yml
+├── sonar-project.properties
+└── package.json
 ```
 
-Go to the project directory
+## Running Locally (Docker Compose)
 
 ```bash
-  cd mern-chat-app
+git clone https://github.com/hithesh-27/MERN-CHAT-APP-Devops-Project.git
+cd MERN-CHAT-APP-Devops-Project
+docker-compose up --build
 ```
 
-Install dependencies
+This spins up:
+- `mongodb` — MongoDB 7, exposed on `27017`
+- `chat-app` — the built app, exposed on `5000`
+
+## Running Locally (without Docker)
 
 ```bash
-  npm install
+# Backend
+cd backend
+npm install
+npm run start
+
+# Frontend
+cd frontend
+npm install
+npm start
 ```
+
+## Kubernetes / EKS Deployment
+
+Manifests live in `k8s/`. Apply directly:
 
 ```bash
-  cd frontend/
-  npm install
+kubectl apply -f k8s/
 ```
 
-Start the server
+Or let **ArgoCD** manage it via GitOps using the application definitions in `argocd/` — ArgoCD watches this repo and syncs the cluster automatically on changes to `main`.
 
-```bash
-  npm run start
-```
-Start the Client
+## CI/CD
 
-```bash
-  //open now terminal
-  cd frontend
-  npm start
-```
+The pipeline is defined in `.github/workflows/ci-cd.yml` and runs on every push to `main`:
+- Build & test
+- SonarQube static analysis
+- OWASP dependency vulnerability scan
+- Docker image build
+- Deployment to EKS via Ansible/Kubernetes manifests, synced through ArgoCD
 
-  
-# Features
+## Screenshots
 
-### Authenticaton
-![](https://github.com/piyush-eon/mern-chat-app/blob/master/screenshots/login.PNG)
-![](https://github.com/piyush-eon/mern-chat-app/blob/master/screenshots/signup.PNG)
-### Real Time Chatting with Typing indicators
-![](https://github.com/piyush-eon/mern-chat-app/blob/master/screenshots/real-time.PNG)
-### One to One chat
-![](https://github.com/piyush-eon/mern-chat-app/blob/master/screenshots/mainscreen.PNG)
-### Search Users
-![](https://github.com/piyush-eon/mern-chat-app/blob/master/screenshots/search.PNG)
-### Create Group Chats
-![](https://github.com/piyush-eon/mern-chat-app/blob/master/screenshots/new%20grp.PNG)
-### Notifications 
-![](https://github.com/piyush-eon/mern-chat-app/blob/master/screenshots/group%20%2B%20notif.PNG)
-### Add or Remove users from group
-![](https://github.com/piyush-eon/mern-chat-app/blob/master/screenshots/add%20rem.PNG)
-### View Other user Profile
-![](https://github.com/piyush-eon/mern-chat-app/blob/master/screenshots/profile.PNG)
-  
+See the `screenshots/` directory for UI walkthroughs (auth, real-time chat, group chats, notifications, profile view).
+
+## Notes
+
+This project was built to demonstrate an end-to-end DevOps workflow — from code commit to a running, monitored deployment on Kubernetes — layered on top of an existing MERN chat application, rather than to showcase the chat app's features themselves.
