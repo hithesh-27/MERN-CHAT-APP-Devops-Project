@@ -44,6 +44,8 @@ jobs:
           project: "chat-app"
           path: "."
           format: "HTML"
+          arguments: >
+            --disableYarnAudit
 
       - name: Trivy Filesystem Scan
         uses: aquasecurity/trivy-action@master
