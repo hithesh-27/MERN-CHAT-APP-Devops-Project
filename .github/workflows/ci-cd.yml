@@ -5,6 +5,9 @@ on:
     branches:
       - main
 
+permissions:
+  contents: write
+
 jobs:
   build-and-scan:
     runs-on: ubuntu-latest
@@ -17,6 +20,7 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 18
+          cache: npm
 
       - name: Install Backend Dependencies
         run: npm install --legacy-peer-deps
@@ -29,19 +33,21 @@ jobs:
       - name: Build React App
         run: npm run build
 
-      - name: Check Sonar Variables
-        run: |
-          echo "SONAR_HOST_URL=${{ secrets.SONAR_HOST_URL }}"
       - name: SonarQube Scan
         uses: SonarSource/sonarqube-scan-action@v5
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
           SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+        with:
+          args: >
+            -Dsonar.projectKey=mern-chat-app
+            -Dsonar.sources=backend,frontend
+            -Dsonar.exclusions=**/node_modules/**,**/build/**
 
       - name: OWASP Dependency Check
         uses: dependency-check/Dependency-Check_Action@main
         with:
-          project: "chat-app"
+          project: "mern-chat-app"
           path: "."
           format: "HTML"
           arguments: >
@@ -52,6 +58,8 @@ jobs:
         with:
           scan-type: fs
           scan-ref: .
+          ignore-unfixed: true
+          severity: CRITICAL,HIGH
 
       - name: Login to Docker Hub
         uses: docker/login-action@v3
@@ -59,11 +67,36 @@ jobs:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
 
+      - name: Set Image Tag
+        run: |
+          echo "IMAGE_TAG=${GITHUB_SHA}" >> "$GITHUB_ENV"
+
       - name: Build Docker Image
         run: |
-          docker build -t hitheshgowda10docker/chat-app:latest .
+          docker build \
+            -t hitheshgowda10docker/chat-app:${IMAGE_TAG} \
+            -t hitheshgowda10docker/chat-app:latest \
+            .
 
       - name: Push Docker Image
         run: |
+          docker push hitheshgowda10docker/chat-app:${IMAGE_TAG}
           docker push hitheshgowda10docker/chat-app:latest
 
+      - name: Update Kubernetes Image
+        run: |
+          sed -i \
+            "s|image: hitheshgowda10docker/chat-app:.*|image: hitheshgowda10docker/chat-app:${IMAGE_TAG}|" \
+            k8s/backend/deployment.yaml
+
+      - name: Commit Kubernetes Manifest
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          git add k8s/backend/deployment.yaml
+
+          git diff --cached --quiet || \
+          git commit -m "chore: deploy ${IMAGE_TAG} [skip ci]"
+
+          git push
