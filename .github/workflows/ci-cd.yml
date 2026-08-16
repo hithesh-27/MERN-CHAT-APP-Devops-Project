@@ -107,3 +107,4 @@ jobs:
           git commit -m "chore: deploy ${IMAGE_TAG} [skip ci]"
 
           git push
+# CI/CD pipeline
