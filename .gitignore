@@ -2,3 +2,10 @@
 node_modules/
 /frontend/node_modules/
 .env
+# Terraform generated files
+.terraform/
+*.tfstate
+*.tfstate.*
+crash.log
+crash.*.log
+.terraform.lock.hcl

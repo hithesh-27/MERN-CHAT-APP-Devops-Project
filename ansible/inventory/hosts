@@ -1,2 +1,2 @@
 [app]
-13.60.81.198 ansible_user=ubuntu ansible_ssh_private_key_file=/home/ubuntu/Food-Delivery-devops.pem
+localhost ansible_connection=local
