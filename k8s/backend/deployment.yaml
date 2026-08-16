@@ -15,7 +15,7 @@ spec:
     spec:
       containers:
       - name: backend
-        image: hitheshgowda10docker/chat-app:e48a566ee90524f4b00582391bd50c05c39e4aeb
+        image: hitheshgowda10docker/chat-app:b7c76d6a1eb34f540f00446a498dd41931455d90
         imagePullPolicy: Always
         ports:
         - containerPort: 5000
